@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  NOT_REQUIRED
+}
+
+// ------------------------------------------------------
+// MODELOS
+// ------------------------------------------------------
+
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  name      String?
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relación: Un usuario tiene muchos documentos
+  documents Document[]
+
+  @@map("users")
+}
+
+model Document {
+  id         Int       @id @default(autoincrement())
+  title      String
+  filePath   String
+  ocrStatus  OcrStatus @default(PENDING)
+  
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Clave foránea y relación con User
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relación: Un documento tiene muchas notas
+  notes      Note[]
+
+  @@index([userId])
+  @@map("documents")
+}
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  title      String   @default("Nota sin título")
+  content    String?  @db.Text
+  highlights Json?
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Clave foránea y relación con Document
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("notes")
+}
