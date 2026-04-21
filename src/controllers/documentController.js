@@ -15,7 +15,9 @@ const uploadDocument = async (req, res) => {
       return res.status(400).json({ error: "El userId es requerido." });
     }
 
-    const originalName = req.file.originalname;
+    const originalName = Buffer.from(req.file.originalname, "latin1").toString(
+      "utf8",
+    );
     const inputFilePath = req.file.path;
     const tempUrl = `/uploads/${req.file.filename}`;
 
@@ -121,11 +123,9 @@ const deleteDocument = async (req, res) => {
     }
 
     if (document.userId !== req.userId) {
-      return res
-        .status(403)
-        .json({
-          error: "Acceso denegado. Este documento pertenece a otro usuario.",
-        })
+      return res.status(403).json({
+        error: "Acceso denegado. Este documento pertenece a otro usuario.",
+      });
     }
 
     if (document.filePath) {

@@ -32,19 +32,12 @@ const verifyNoteOwnership = async (noteId, userId, res) => {
 const getNotesByDocumentId = async (req, res) => {
   try {
     const documentId = parseInt(req.params.id, 10);
-    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
-
+    
     if (isNaN(documentId)) {
-      return res
-        .status(400)
-        .json({ error: "El ID del documento debe ser un número válido." });
+      return res.status(400).json({ error: "El ID del documento debe ser un número válido." });
     }
 
-    if (document.userId !== req.userId) {
-      return res.status(403).json({
-        error: "Acceso denegado. Este documento pertenece a otro usuario.",
-      });
-    }
+    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
 
     const notes = await prisma.note.findMany({
       where: { documentId: documentId },
@@ -67,27 +60,12 @@ const getNotesByDocumentId = async (req, res) => {
 const createNote = async (req, res) => {
   try {
     const documentId = parseInt(req.params.id, 10);
-    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
-
+    
     if (isNaN(documentId)) {
-      return res
-        .status(400)
-        .json({ error: "El ID del documento debe ser un número válido." });
+      return res.status(400).json({ error: "El ID del documento debe ser un número válido." });
     }
 
-    const documentExists = await prisma.document.findUnique({
-      where: { id: documentId },
-    });
-
-    if (!documentExists) {
-      return res.status(404).json({ error: "El documento no existe." });
-    }
-
-    if (document.userId !== req.userId) {
-      return res.status(403).json({
-        error: "Acceso denegado. Este documento pertenece a otro usuario.",
-      });
-    }
+    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
 
     const nuevaNota = await prisma.note.create({
       data: {
@@ -108,11 +86,13 @@ const createNote = async (req, res) => {
 const getNoteById = async (req, res) => {
   try {
     const noteId = parseInt(req.params.id, 10);
-    const note = await verifyNoteOwnership(noteId, req.userId, res);
-
-    if (!note) {
-      return res.status(404).json({ error: "Nota no encontrada." });
+    
+    if (isNaN(noteId)) {
+      return res.status(400).json({ error: "El ID de la nota debe ser un número válido." });
     }
+
+    const note = await verifyNoteOwnership(noteId, req.userId, res);
+    if (!note) return;
 
     delete note.document;
     res.status(200).json(note);
@@ -125,6 +105,11 @@ const getNoteById = async (req, res) => {
 const updateNote = async (req, res) => {
   try {
     const noteId = parseInt(req.params.id, 10);
+    
+    if (isNaN(noteId)) {
+      return res.status(400).json({ error: "El ID de la nota debe ser un número válido." });
+    }
+
     const { title, content, highlights } = req.body;
 
     if (!(await verifyNoteOwnership(noteId, req.userId, res))) return;
@@ -138,9 +123,7 @@ const updateNote = async (req, res) => {
 
   } catch (error) {
     if (error.code === "P2025") {
-      return res
-        .status(404)
-        .json({ error: "Nota no encontrada para actualizar." });
+      return res.status(404).json({ error: "Nota no encontrada para actualizar." });
     }
     console.error("Error actualizando nota:", error);
     res.status(500).json({ error: "Error interno al actualizar la nota." });

@@ -1,28 +1,24 @@
-const multer = require('multer');
-const path = require('path');
+const multer = require("multer");
+const path = require("path");
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+  filename: (req, file, cb) => {
+    const utf8Name = Buffer.from(file.originalname, "latin1").toString("utf8");
+
+    const safeName = utf8Name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9.-]/g, "_")
+      .toLowerCase();
+
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + safeName);
+  },
 });
 
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('Formato no soportado. Solo se permiten archivos PDF.'), false);
-  }
-};
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 20 * 1024 * 1024 } 
-});
+const upload = multer({ storage: storage });
 
 module.exports = upload;
