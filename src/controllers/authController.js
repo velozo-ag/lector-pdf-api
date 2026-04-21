@@ -3,8 +3,6 @@ const prisma = require("../config/prisma");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -13,6 +11,17 @@ const register = async (req, res) => {
       return res
         .status(400)
         .json({ error: "Nombre, email y contraseña son obligatorios." });
+    }
+
+    // Fail-Fast: Verificamos el secreto antes de hacer la inserción
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      console.error(
+        "CRÍTICO: JWT_SECRET no está definido en las variables de entorno.",
+      );
+      return res
+        .status(500)
+        .json({ error: "Error de configuración del servidor." });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -56,6 +65,16 @@ const login = async (req, res) => {
         .json({ error: "Email y contraseña son obligatorios." });
     }
 
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      console.error(
+        "CRÍTICO: JWT_SECRET no está definido en las variables de entorno.",
+      );
+      return res
+        .status(500)
+        .json({ error: "Error de configuración del servidor." });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(401).json({ error: "Credenciales inválidas." });
@@ -82,7 +101,6 @@ const login = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    // req.userId es inyectado por el authMiddleware
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
       select: { id: true, name: true, email: true, createdAt: true },
