@@ -4,15 +4,16 @@ const router = express.Router();
 const upload = require("../config/multer");
 const documentController = require("../controllers/documentController");
 const noteController = require("../controllers/noteController");
+const { uploadLimiter } = require("../middleware/rateLimiters");
 
 router.get("/", documentController.getAllDocuments);
 
 router.post(
   "/",
+  uploadLimiter,
   (req, res, next) => {
     upload.single("pdfFile")(req, res, function (err) {
       if (err) {
-        console.error("Error de Multer:", err.message);
         return res
           .status(400)
           .json({ error: "Error al subir el archivo: " + err.message });

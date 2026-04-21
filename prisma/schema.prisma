@@ -24,16 +24,12 @@ enum OcrStatus {
 
 model User {
   id        Int        @id @default(autoincrement())
+  name      String
   email     String     @unique
-  name      String?
-  
+  password  String
+  documents Document[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-
-  // Relación: Un usuario tiene muchos documentos
-  documents Document[]
-
-  @@map("users")
 }
 
 model Document {
