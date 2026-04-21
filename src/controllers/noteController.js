@@ -1,10 +1,38 @@
-// Archivo: src/controllers/noteController.js
 const prisma = require("../config/prisma");
 
-// [Sidebar] Obtener notas de un documento excluyendo contenido pesado
+const verifyDocumentOwnership = async (documentId, userId, res) => {
+  const doc = await prisma.document.findUnique({ where: { id: documentId } });
+  if (!doc) {
+    res.status(404).json({ error: "Documento no encontrado." });
+    return false;
+  }
+  if (doc.userId !== userId) {
+    res.status(403).json({ error: "Acceso denegado." });
+    return false;
+  }
+  return true;
+};
+
+const verifyNoteOwnership = async (noteId, userId, res) => {
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    include: { document: true },
+  });
+  if (!note) {
+    res.status(404).json({ error: "Nota no encontrada." });
+    return null;
+  }
+  if (note.document.userId !== userId) {
+    res.status(403).json({ error: "Acceso denegado." });
+    return null;
+  }
+  return note;
+};
+
 const getNotesByDocumentId = async (req, res) => {
   try {
     const documentId = parseInt(req.params.id, 10);
+    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
 
     if (isNaN(documentId)) {
       return res
@@ -12,9 +40,14 @@ const getNotesByDocumentId = async (req, res) => {
         .json({ error: "El ID del documento debe ser un número válido." });
     }
 
+    if (document.userId !== req.userId) {
+      return res.status(403).json({
+        error: "Acceso denegado. Este documento pertenece a otro usuario.",
+      });
+    }
+
     const notes = await prisma.note.findMany({
       where: { documentId: documentId },
-      // OPTIMIZACIÓN CLAVE: Excluimos 'content' y 'highlights'
       select: {
         id: true,
         title: true,
@@ -31,10 +64,10 @@ const getNotesByDocumentId = async (req, res) => {
   }
 };
 
-// [Editor] Crear una nota vacía asociada a un documento
 const createNote = async (req, res) => {
   try {
     const documentId = parseInt(req.params.id, 10);
+    if (!(await verifyDocumentOwnership(documentId, req.userId, res))) return;
 
     if (isNaN(documentId)) {
       return res
@@ -42,12 +75,18 @@ const createNote = async (req, res) => {
         .json({ error: "El ID del documento debe ser un número válido." });
     }
 
-    // Verificamos que el documento exista antes de atarle una nota
     const documentExists = await prisma.document.findUnique({
       where: { id: documentId },
     });
+
     if (!documentExists) {
       return res.status(404).json({ error: "El documento no existe." });
+    }
+
+    if (document.userId !== req.userId) {
+      return res.status(403).json({
+        error: "Acceso denegado. Este documento pertenece a otro usuario.",
+      });
     }
 
     const nuevaNota = await prisma.note.create({
@@ -55,7 +94,7 @@ const createNote = async (req, res) => {
         documentId: documentId,
         title: "Nueva Nota",
         content: "",
-        highlights: [], // Array nativo vacío
+        highlights: [],
       },
     });
 
@@ -66,25 +105,16 @@ const createNote = async (req, res) => {
   }
 };
 
-// [Visor] Obtener una nota específica con todo su contenido
 const getNoteById = async (req, res) => {
   try {
     const noteId = parseInt(req.params.id, 10);
-
-    if (isNaN(noteId)) {
-      return res
-        .status(400)
-        .json({ error: "El ID de la nota debe ser un número válido." });
-    }
-
-    const note = await prisma.note.findUnique({
-      where: { id: noteId },
-    });
+    const note = await verifyNoteOwnership(noteId, req.userId, res);
 
     if (!note) {
       return res.status(404).json({ error: "Nota no encontrada." });
     }
 
+    delete note.document;
     res.status(200).json(note);
   } catch (error) {
     console.error("Error obteniendo la nota:", error);
@@ -92,29 +122,20 @@ const getNoteById = async (req, res) => {
   }
 };
 
-// [Auto-Guardado] Actualizar título, contenido y subrayados
 const updateNote = async (req, res) => {
   try {
     const noteId = parseInt(req.params.id, 10);
     const { title, content, highlights } = req.body;
 
-    if (isNaN(noteId)) {
-      return res
-        .status(400)
-        .json({ error: "El ID de la nota debe ser un número válido." });
-    }
+    if (!(await verifyNoteOwnership(noteId, req.userId, res))) return;
 
     const notaActualizada = await prisma.note.update({
       where: { id: noteId },
-      data: {
-        title,
-        content,
-        // Prisma inyecta el JSON de forma nativa a MySQL sin necesitar stringify
-        highlights,
-      },
+      data: { title, content, highlights },
     });
-
+    
     res.status(200).json(notaActualizada);
+
   } catch (error) {
     if (error.code === "P2025") {
       return res
