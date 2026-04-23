@@ -21,50 +21,88 @@ enum OcrStatus {
 // ------------------------------------------------------
 // MODELOS
 // ------------------------------------------------------
-
 model User {
   id        Int        @id @default(autoincrement())
   name      String
   email     String     @unique
   password  String
+  
   documents Document[]
+  notes     Note[]     // NUEVO: El usuario ahora es dueño directo de sus notas
+  folders   Folder[]   // NUEVO: El usuario es dueño de sus carpetas
+  
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
 
-model Document {
-  id         Int       @id @default(autoincrement())
-  title      String
-  filePath   String
-  ocrStatus  OcrStatus @default(PENDING)
+model Folder {
+  id        Int        @id @default(autoincrement())
+  name      String
+  type      String     // "DOCUMENT" o "NOTE" para separar visualmente en el frontend
   
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documents Document[]
+  notes     Note[]
 
-  // Clave foránea y relación con User
-  userId     Int
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Relación: Un documento tiene muchas notas
-  notes      Note[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([userId])
+  @@map("folders")
+}
+
+model Document {
+  id         Int        @id @default(autoincrement())
+  title      String
+  filePath   String
+  ocrStatus  OcrStatus  @default(PENDING) 
+  
+  isFavorite Boolean    @default(false) // NUEVO: Sistema de favoritos
+
+  userId     Int
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // NUEVO: Relación opcional con una Carpeta
+  folderId   Int?
+  folder     Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  // NUEVA RELACIÓN MUCHOS A MUCHOS (Una nota en muchos PDFs, un PDF con muchas notas)
+  globalNotes Note[]    @relation("GlobalDocumentNotes")
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([folderId])
   @@map("documents")
 }
 
 model Note {
-  id         Int      @id @default(autoincrement())
-  title      String   @default("Nota sin título")
-  content    String?  @db.Text
-  highlights Json?
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id         Int        @id @default(autoincrement())
+  title      String
+  content    String     @db.LongText
+  highlights Json
 
-  // Clave foránea y relación con Document
-  documentId Int
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  isFavorite Boolean    @default(false)
 
-  @@index([documentId])
+  // 1. El dueño ahora es OBLIGATORIO (le quitamos el "?")
+  userId     Int        
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  folderId   Int?
+  folder     Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  // 2. ELIMINAMOS POR COMPLETO documentId y oldDocument
+
+  // 3. Mantenemos la relación Muchos a Muchos intacta
+  documents  Document[] @relation("GlobalDocumentNotes")
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([folderId])
   @@map("notes")
 }
