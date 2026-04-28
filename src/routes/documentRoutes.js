@@ -1,12 +1,8 @@
-// Archivo: src/routes/documentRoutes.js
 const express = require("express");
 const router = express.Router();
-const upload = require("../config/multer");
 const documentController = require("../controllers/documentController");
-const noteController = require("../controllers/noteController");
+const upload = require("../config/multer");
 const { uploadLimiter } = require("../middleware/rateLimiters");
-
-router.get("/", documentController.getAllDocuments);
 
 router.post(
   "/",
@@ -24,9 +20,10 @@ router.post(
   documentController.uploadDocument,
 );
 
+router.get("/", documentController.getAllDocuments);
 router.delete("/:id", documentController.deleteDocument);
 
-router.get("/:id/notes", noteController.getNotesByDocumentId);
-router.post("/:id/notes", noteController.createNote);
+router.patch("/:id/favorite", documentController.toggleFavorite);
+router.patch("/:id/move", documentController.moveToFolder);
 
 module.exports = router;

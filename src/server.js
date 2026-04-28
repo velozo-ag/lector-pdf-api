@@ -7,6 +7,7 @@ const path = require("path");
 const documentRoutes = require("./routes/documentRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const authRoutes = require("./routes/authRoutes");
+const folderRoutes = require("./routes/folderRoutes");
 const authMiddleware = require("./middleware/authMiddleware");
 const { apiLimiter } = require("./middleware/rateLimiters");
 
@@ -47,6 +48,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", authMiddleware, documentRoutes);
 app.use("/api/notes", authMiddleware, noteRoutes);
+app.use("/api/folders", authMiddleware, folderRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({
