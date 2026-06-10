@@ -188,10 +188,71 @@ const moveToFolder = async (req, res) => {
   }
 };
 
+// NUEVO: Re-procesar OCR
+const reprocessOcr = async (req, res) => {
+  try {
+    const documentId = parseInt(req.params.id, 10);
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.userId !== req.userId) {
+      return res
+        .status(404)
+        .json({ error: "Documento no encontrado o acceso denegado." });
+    }
+
+    // Actualizar estado a PENDING en la base de datos inmediatamente
+    const docActualizado = await prisma.document.update({
+      where: { id: documentId },
+      data: { ocrStatus: "PENDING" },
+    });
+
+    res.status(200).json(docActualizado);
+
+    // Ejecutar el procesamiento OCR en segundo plano
+    const fileName = document.filePath.replace("/uploads/", "");
+    const fullFilePath = require("path").join(
+      __dirname,
+      "../../uploads/",
+      fileName,
+    );
+
+    pdfService
+      .analyzeAndProcessPdf(fullFilePath, fileName)
+      .then(async (result) => {
+        await prisma.document.update({
+          where: { id: documentId },
+          data: {
+            filePath: result.finalPath,
+            ocrStatus: result.status,
+          },
+        });
+        console.log(
+          `[Background Task] Documento ${documentId} (Re-procesado) finalizado con estado: ${result.status}`,
+        );
+      })
+      .catch(async (error) => {
+        console.error(
+          `[Background Task] Error re-procesando documento ${documentId}:`,
+          error,
+        );
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { ocrStatus: "FAILED" },
+        });
+      });
+  } catch (error) {
+    console.error("Error al re-procesar OCR:", error);
+    res.status(500).json({ error: "Error interno al re-procesar OCR." });
+  }
+};
+
 module.exports = {
   uploadDocument,
   getAllDocuments,
   deleteDocument,
   toggleFavorite,
   moveToFolder,
+  reprocessOcr,
 };

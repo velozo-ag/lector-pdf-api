@@ -25,5 +25,6 @@ router.delete("/:id", documentController.deleteDocument);
 
 router.patch("/:id/favorite", documentController.toggleFavorite);
 router.patch("/:id/move", documentController.moveToFolder);
+router.post("/:id/reprocess-ocr", documentController.reprocessOcr);
 
 module.exports = router;

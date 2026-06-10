@@ -2,7 +2,7 @@ const rateLimit = require("express-rate-limit");
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
-  max: 10, 
+  max: 1000, // Extendido significativamente
   message: {
     error:
       "Demasiados intentos de inicio de sesión. Por favor, intenta de nuevo en 15 minutos.",
@@ -13,7 +13,7 @@ const authLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, 
-  max: 15,
+  max: 1000, // Extendido significativamente
   message: {
     error:
       "Has alcanzado el límite de subida de documentos por hora. Intenta más tarde.",
@@ -24,7 +24,7 @@ const uploadLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, 
-  max: 200,
+  max: 100000, // Extendido significativamente (100k por cada 10 min)
   message: {
     error:
       "Tráfico inusual detectado. Por favor, reduce la velocidad de tus peticiones.",
