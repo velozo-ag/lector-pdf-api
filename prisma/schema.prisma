@@ -27,9 +27,11 @@ model User {
   email     String     @unique
   password  String
   
-  documents Document[]
-  notes     Note[]     // NUEVO: El usuario ahora es dueño directo de sus notas
-  folders   Folder[]   // NUEVO: El usuario es dueño de sus carpetas
+  documents          Document[]
+  notes              Note[]     // El usuario ahora es dueño directo de sus notas
+  folders            Folder[]   // El usuario es dueño de sus carpetas
+  calendarEvents     CalendarEvent[]
+  calendarCategories CalendarCategory[]
   
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -105,4 +107,41 @@ model Note {
   @@index([userId])
   @@index([folderId])
   @@map("notes")
+}
+
+// ------------------------------------------------------
+// CALENDARIO
+// ------------------------------------------------------
+model CalendarCategory {
+  id     Int    @id @default(autoincrement())
+  name   String
+  color  String // Hexadecimal, ej: #be123c
+
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events CalendarEvent[]
+
+  @@unique([userId, name])
+  @@map("calendar_categories")
+}
+
+model CalendarEvent {
+  id           Int              @id @default(autoincrement())
+  title        String           @default("Sin título")
+  description  String?          @db.Text
+  start        DateTime
+  end          DateTime
+  allDay       Boolean          @default(false)
+  color        String
+  categoryName String
+
+  category     CalendarCategory @relation(fields: [userId, categoryName], references: [userId, name], onDelete: Cascade)
+  userId       Int
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([userId])
+  @@map("calendar_events")
 }

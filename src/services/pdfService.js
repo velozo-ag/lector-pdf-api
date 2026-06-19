@@ -135,7 +135,7 @@ async function processPdfWithOCR(inputFilePath, originalName) {
 
 function extractTextWithPdf2Json(filePath) {
   return new Promise((resolve) => {
-    const pdfParser = new PDFParser(this, 1);
+    const pdfParser = new PDFParser(null, 1);
 
     pdfParser.on("pdfParser_dataError", (errData) => {
       console.warn(
